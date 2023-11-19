@@ -1,0 +1,52 @@
+{
+    "name": "afb-i2c",
+    "no-ldpaths": true,
+    "port": 1234,
+    "alias": [
+        "/devtools:/usr/share/afb-ui-devtools/binder"
+    ],
+    "monitoring": true,
+    "tracereq": "all",
+    "binding": [
+        {
+            "uid": "i2c-bus",
+            "api": "i2c",
+            "path": "${CARGO_TARGET_DIR}debug/libafb_i2c.so",
+            "info": "i2c set/get api",
+            //"i2cbus": "/dev/i2c-0",
+            "i2cbus": "/dev/ttyUSB0",
+            "acls": "acl:ic2:0",
+            "cmds": [
+                {
+                    "uid": "lock-motor",
+                    "name": "Lock-Motor",
+                    "info": "Lock motor I2C register",
+                    "acls": "acl:lock:motor",
+                    "size": 1,
+                    "addr": "0x20",
+                    "register": "0x02",
+                    "presets": [
+                        {
+                            "action": "on",
+                            "value": "0xff"
+                        },
+                        {
+                            "action": "off",
+                            "value": "0x00"
+                        }
+                    ]
+                },
+                {
+                    "uid": "max-power",
+                    "name": "max-power",
+                    "info": "max current allowed",
+                    "acls": "acl:lock:power",
+                    "size": 1,
+                    "addr": "0x20",
+                    "samples": ["10","20","32"],
+                    "register": "0x04"
+                }
+            ]
+        }
+    ]
+}

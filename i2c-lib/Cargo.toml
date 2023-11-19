@@ -1,0 +1,21 @@
+[package]
+name = "libi2c"
+version = "0.0.1"
+edition = "2021"
+authors = ["Fulup Le Foll <fulup@iot.bzh>"]
+publish = false
+build = "capi/build.rs"
+
+[dependencies]
+afbv4 = {git= "https://github.com/redpesk-common/afb-librust", branch="master", optional = true}
+
+[build-dependencies]
+bindgen    = ">=0.69"
+cc = "1"
+
+[lib]
+name = "libi2c"
+crate-type = ["lib"]
+path = "src/libso.rs"
+
+

@@ -1,0 +1,20 @@
+[package]
+name = "i2c-binding"
+version = "0.0.1"
+edition = "2021"
+authors = ["Fulup Le Foll <fulup@iot.bzh>"]
+publish = false
+build = "etc/build.rs"
+
+[dependencies]
+afbv4 = {git= "https://github.com/redpesk-common/afb-librust", branch="master", optional = true}
+serde = { version = "1.0", features = ["derive"] }
+serde_json={ version= "1.0"}
+libi2c= {path ="../i2c-lib"}
+chrono = { version = "0.4", default-features = false, features = ["serde"] }
+
+
+[lib]
+name = "afb_i2c"
+crate-type = ["cdylib"]
+path = "src/libso.rs"

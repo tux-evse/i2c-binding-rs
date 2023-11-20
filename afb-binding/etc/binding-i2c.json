@@ -15,7 +15,6 @@
             "info": "i2c set/get api",
             "i2cbus": "/dev/i2c-0",
             "acls": "acl:ic2:0",
-            "ws-server": "/run/user/0/apis/ws/i2c",
             "cmds": [
                 {
                     "uid": "lock-motor",

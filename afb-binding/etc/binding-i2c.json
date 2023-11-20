@@ -11,7 +11,7 @@
         {
             "uid": "i2c-bus",
             "api": "i2c",
-            "path": "${CARGO_TARGET_DIR}debug/libafb_i2c.so",
+            "path": "/usr/redpesk/i2c-binding-rs/lib/libafb_i2c.so",
             "info": "i2c set/get api",
             "i2cbus": "/dev/i2c-0",
             "permission": "acl:ic2:0",

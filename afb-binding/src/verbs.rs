@@ -182,7 +182,7 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
             None
         };
 
-        let acls = if let Ok(value) = cmd.get::<String>("info") {
+        let permission = if let Ok(value) = cmd.get::<String>("info") {
             Some(value)
         } else {
             None
@@ -242,7 +242,7 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
             verb.set_info(to_static_str(value));
         }
 
-        if let Some(value) = acls {
+        if let Some(value) = permission {
             verb.set_permission(AfbPermission::new(to_static_str(value)));
         }
 

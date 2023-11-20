@@ -57,7 +57,7 @@ pub fn binding_init(rootv4: AfbApiV4, jconf: JsoncObj) -> Result<&'static AfbApi
         ""
     };
 
-    let acls = if let Ok(value) = jconf.get::<String>("acls") {
+    let permission = if let Ok(value) = jconf.get::<String>("permission") {
         AfbPermission::new(to_static_str(value))
     } else {
         AfbPermission::new("acl:i2c:client")
@@ -91,7 +91,7 @@ pub fn binding_init(rootv4: AfbApiV4, jconf: JsoncObj) -> Result<&'static AfbApi
     let config = BindingCfg { i2cbus, cmds };
 
     // create backend API
-    let api = AfbApi::new(api).set_info(info).set_permission(acls);
+    let api = AfbApi::new(api).set_info(info).set_permission(permission);
     register_verbs(api, config)?;
 
     Ok(api.finalize()?)

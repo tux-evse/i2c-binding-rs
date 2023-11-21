@@ -11,7 +11,6 @@ afbv4 = {git= "https://github.com/redpesk-common/afb-librust", branch="master", 
 serde = { version = "1.0", features = ["derive"] }
 serde_json={ version= "1.0"}
 libi2c= {path ="../i2c-lib"}
-chrono = { version = "0.4", default-features = false, features = ["serde"] }
 
 
 [lib]

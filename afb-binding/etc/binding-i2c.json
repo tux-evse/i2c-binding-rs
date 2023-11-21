@@ -1,7 +1,6 @@
 {
     "name": "afb-i2c",
     "no-ldpaths": true,
-    "no-httpd": true,
     "alias": [
         "/devtools:/usr/share/afb-ui-devtools/binder"
     ],
@@ -12,9 +11,23 @@
             "uid": "i2c-bus",
             "api": "i2c",
             "path": "/usr/redpesk/i2c-binding-rs/lib/libafb_i2c.so",
+            //"path": "/home/fulup/.cargo/build/debug/libafb_i2c.so",
             "info": "i2c set/get api",
             "i2cbus": "/dev/i2c-0",
+            //"i2cbus": "/dev/ttyUSB0",
             "permission": "acl:ic2:0",
+            "init": [
+                {
+                    "addr": "0x20",
+                    "reg": "0x02",
+                    "value": "0xDC"
+                },
+                {
+                    "addr": "0x20",
+                    "reg": "0x06",
+                    "value": "0x03"
+                }
+            ],
             "cmds": [
                 {
                     "uid": "lock-motor",
@@ -27,23 +40,23 @@
                     "presets": [
                         {
                             "action": "on",
-                            "value": "0xff"
+                            "delay": 350,
+                            "values": [
+                                "0xDC",
+                                "0xFC",
+                                "0xDC"
+                            ]
                         },
                         {
                             "action": "off",
-                            "value": "0x00"
+                            "delay": 500,
+                            "values": [
+                                "0xCC",
+                                "0xEC",
+                                "0xCC"
+                            ]
                         }
                     ]
-                },
-                {
-                    "uid": "max-power",
-                    "name": "max-power",
-                    "info": "max current allowed",
-                    "permission": "acl:lock:power",
-                    "size": 1,
-                    "addr": "0x20",
-                    "samples": ["10","20","32"],
-                    "register": "0x04"
                 }
             ]
         }

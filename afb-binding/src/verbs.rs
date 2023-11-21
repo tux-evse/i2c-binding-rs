@@ -14,6 +14,8 @@ use crate::prelude::*;
 use afbv4::prelude::*;
 use libi2c::prelude::*;
 use std::rc::Rc;
+use std::time::Duration;
+use std::{thread, time};
 
 fn hexa_string_to_u32(input: String) -> Result<u32, AfbError> {
     let data = input.trim_start_matches("0x");
@@ -55,16 +57,22 @@ fn hexa_string_to_u8(input: String) -> Result<u8, AfbError> {
     } else {
         match u8::from_str_radix(data, 10) {
             Err(_error) => Err(AfbError::new("hexa-invalid-integer", input)),
-            Ok(value) =>   Ok(value as u8),
+            Ok(value) => Ok(value as u8),
         }
     }
+}
+
+#[derive(Clone)]
+struct PresetData {
+    delay: Option<Duration>,
+    values: Vec<u16>,
 }
 
 #[derive(Clone)]
 enum PresetValue {
     READ,
     WRITE,
-    PRESET(u16),
+    PRESET(PresetData),
 }
 
 #[derive(Clone)]
@@ -88,7 +96,7 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
 
     for preset in &ctx.actions {
         if action == preset.action {
-            match preset.value {
+            match &preset.value {
                 PresetValue::READ => match ctx.size {
                     1 => {
                         let data: u8 = ctx.i2c.read(ctx.addr, ctx.register)?;
@@ -101,7 +109,7 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
                     _ => {
                         return Err(AfbError::new(
                             "rqt-i2c-size",
-                            format!("invalid size:{} should Byte(1) & >ord(2)", ctx.size),
+                            format!("invalid size:{} should Byte(1) & World(2)", ctx.size),
                         ))
                     }
                 },
@@ -121,27 +129,41 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
                         _ => {
                             return Err(AfbError::new(
                                 "rqt-i2c-size",
-                                format!("invalid size:{} should Byte(1) & >ord(2)", ctx.size),
+                                format!("invalid size:{} should Byte(1) & World(2)", ctx.size),
                             ))
                         }
                     }
                 }
-                PresetValue::PRESET(value) => match ctx.size {
-                    1 => {
-                        ctx.i2c.write(ctx.addr, ctx.register, value as u8)?;
-                        rqt.reply(AFB_NO_DATA, 0);
+                PresetValue::PRESET(data) => {
+                    match ctx.size {
+                        1 => {
+                            for idx in 0..data.values.len() {
+                                ctx.i2c
+                                    .write(ctx.addr, ctx.register, data.values[idx] as u8)?;
+                                if let Some(value) = data.delay {
+                                    thread::sleep(value)
+                                }
+                            }
+                            rqt.reply(AFB_NO_DATA, 0);
+                        }
+                        2 => {
+                            for idx in 0..data.values.len() {
+                                ctx.i2c
+                                    .write(ctx.addr, ctx.register, data.values[idx] as u16)?;
+                                if let Some(value) = data.delay {
+                                    thread::sleep(value)
+                                }
+                            }
+                            rqt.reply(AFB_NO_DATA, 0);
+                        }
+                        _ => {
+                            return Err(AfbError::new(
+                                "rqt-i2c-size",
+                                format!("invalid size:{} should Byte(1) & World(2)", ctx.size),
+                            ))
+                        }
                     }
-                    2 => {
-                        ctx.i2c.write(ctx.addr, ctx.register, value as u16)?;
-                        rqt.reply(AFB_NO_DATA, 0);
-                    }
-                    _ => {
-                        return Err(AfbError::new(
-                            "rqt-i2c-size",
-                            format!("invalid size:{} should Byte(1) & >ord(2)", ctx.size),
-                        ))
-                    }
-                },
+                }
             }
         }
     }
@@ -149,7 +171,36 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
 }
 
 pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(), AfbError> {
+    // open i2c bus and send init commands if needed
     let i2c = Rc::new(I2cHandle::new(config.i2cbus)?);
+    if let Some(inits) = config.inits {
+        for idx in 0..inits.count()? {
+            let cmd = inits.index::<JsoncObj>(idx)?;
+            let addr = hexa_string_to_u32(cmd.get::<String>("addr")?)?;
+            let register = hexa_string_to_u8(cmd.get::<String>("reg")?)?;
+            let value = cmd.get::<String>("value")?;
+            let size = if let Ok(value) = cmd.get::<u32>("size") {
+                value
+            } else {
+                1
+            };
+
+            match size {
+                1 => {
+                    i2c.write(addr, register, hexa_string_to_u8(value)?)?;
+                }
+                2 => {
+                    i2c.write(addr, register, hexa_string_to_u16(value)?)?;
+                }
+                _ => {
+                    return Err(AfbError::new(
+                        "i2c-init-size",
+                        format!("invalid size:{} should Byte(1) & World(2)", size),
+                    ))
+                }
+            }
+        }
+    }
 
     // default actions
     let get = PreSetAction {
@@ -203,11 +254,24 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
             for jdx in 0..presets.count()? {
                 let preset = presets.index::<JsoncObj>(jdx)?;
                 let action = preset.get::<String>("action")?.to_lowercase();
-                let value = hexa_string_to_u16(preset.get::<String>("value")?)?;
+                let delay = if let Ok(value) = preset.get::<u64>("delay") {
+                    Some(time::Duration::from_millis(value))
+                } else {
+                    None
+                };
+                let mut data = PresetData {
+                    delay: delay,
+                    values: Vec::new(),
+                };
+                let values = preset.get::<JsoncObj>("values")?;
+                for kdx in 0..values.count()? {
+                    let value = hexa_string_to_u16(values.index::<String>(kdx)?)?;
+                    data.values.push(value);
+                }
                 actions_info.push_str(format!("'{}',", &action).as_str());
                 actions.push(PreSetAction {
                     action: action,
-                    value: PresetValue::PRESET(value),
+                    value: PresetValue::PRESET(data),
                 });
             }
         } else {

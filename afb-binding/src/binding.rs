@@ -20,6 +20,7 @@ pub(crate) fn to_static_str(value: String) -> &'static str {
 pub(crate) struct BindingCfg {
     pub i2cbus: &'static str,
     pub cmds: JsoncObj,
+    pub inits: Option<JsoncObj>,
 }
 
 impl AfbApiControls for BindingCfg {
@@ -72,12 +73,25 @@ pub fn binding_init(rootv4: AfbApiV4, jconf: JsoncObj) -> Result<&'static AfbApi
         ));
     };
 
+
+    let inits = if let Ok(value) = jconf.get::<JsoncObj>("init") {
+        if ! matches!(value.get_type(), Jtype::Array) {
+            return Err(AfbError::new(
+                "nfc-config-fail",
+                "optional 'init' label should be an array",
+            ));
+        }
+        Some(value)
+    } else {
+        None
+    };
+
     let cmds = if let Ok(value) = jconf.get::<JsoncObj>("cmds") {
 
         if ! matches!(value.get_type(), Jtype::Array) {
             return Err(AfbError::new(
                 "nfc-config-fail",
-                "mandatory 'cmds' shoud be an array",
+                "mandatory 'cmds' should be an array",
             ));
         }
         value
@@ -88,7 +102,7 @@ pub fn binding_init(rootv4: AfbApiV4, jconf: JsoncObj) -> Result<&'static AfbApi
         ));
     };
 
-    let config = BindingCfg { i2cbus, cmds };
+    let config = BindingCfg { i2cbus, cmds, inits };
 
     // create backend API
     let api = AfbApi::new(api).set_info(info).set_permission(permission);

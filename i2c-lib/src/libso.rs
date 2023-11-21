@@ -21,7 +21,7 @@ extern crate afbv4;
 #[path = "../capi/capi-mod.rs"]
 mod capi;
 
-#[path = "i2c-read.rs"]
+#[path = "i2c-bus.rs"]
 mod i2c;
 
 

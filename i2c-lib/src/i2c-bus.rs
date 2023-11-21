@@ -56,6 +56,8 @@ impl I2cHandle {
             return Err(AfbError::new("serial-open-fail", get_perror()));
         }
 
+        // apply i2c init commands if any (TBD Fulup)
+
         // update fd cell within immutable handle
         self.raw_fd.set(raw_fd);
         afb_log_msg!(Debug, None, "Open port={:?}", self.devname);
@@ -135,6 +137,7 @@ impl I2cDataCmd<u8> for I2cHandle {
     }
 
     fn mk_write(fd: i32, register: u8, data: u8) -> Result<(), String> {
+        println!("i2c_smbus_write_byte_data register:{} data:{}", register, data);
         let res = unsafe { cglue::i2c_smbus_write_byte_data(fd, register, data) };
         if res < 0 {
             return Err(get_perror());

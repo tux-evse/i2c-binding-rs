@@ -86,7 +86,7 @@ impl I2cHandle {
     {
         let fd = self.raw_fd.get();
 
-        if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, &addr) } < 0) {
+        if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, addr) } < 0) {
             return Err(AfbError::new(
                 "ic2-read-addr",
                 format!("invalid addr={}", addr),
@@ -108,7 +108,7 @@ impl I2cHandle {
     {
         let fd = self.raw_fd.get();
 
-        if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, &addr) } < 0) {
+        if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, addr) } < 0) {
             return Err(AfbError::new(
                 "ic2-write-addr",
                 format!("invalid addr={}", addr),

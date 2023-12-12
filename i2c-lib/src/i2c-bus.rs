@@ -28,6 +28,7 @@ pub struct I2cHandle {
 }
 
 impl I2cHandle {
+    #[track_caller]
     pub fn new(i2cbus: &'static str) -> Result<I2cHandle, AfbError> {
         let devname = match CString::new(i2cbus) {
             Err(_) => {
@@ -49,6 +50,7 @@ impl I2cHandle {
         Ok(handle)
     }
 
+    #[track_caller]
     pub fn open(&self) -> Result<(), AfbError> {
         // open tty i2cbus
         let raw_fd = unsafe { cglue::open(self.devname.as_ptr(), cglue::BUS_I2C_O_RDWR, 0) };
@@ -69,6 +71,7 @@ impl I2cHandle {
         unsafe { cglue::close(self.raw_fd.get()) };
     }
 
+    #[track_caller]
     pub fn reopen(&self) -> Result<(), AfbError> {
         self.close();
         self.open()
@@ -82,6 +85,7 @@ impl I2cHandle {
         self.devname.as_c_str()
     }
 
+    #[track_caller]
     pub fn read<T>(&self, addr: u32, reg: u8) -> Result<T, AfbError>
     where
         I2cHandle: I2cDataCmd<T>,
@@ -104,6 +108,7 @@ impl I2cHandle {
         }
     }
 
+    #[track_caller]
     pub fn write<T>(&self, addr: u32, reg: u8, data: T) -> Result<(), AfbError>
     where
         I2cHandle: I2cDataCmd<T>,

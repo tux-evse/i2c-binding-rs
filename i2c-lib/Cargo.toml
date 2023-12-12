@@ -11,7 +11,7 @@ afbv4 = {git= "https://github.com/redpesk-common/afb-librust", branch="master", 
 
 [build-dependencies]
 bindgen    = ">=0.69"
-cc = "1"
+cc = ">=1.0"
 
 [lib]
 name = "libi2c"

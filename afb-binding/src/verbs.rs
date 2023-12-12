@@ -21,12 +21,12 @@ fn hexa_string_to_u32(input: String) -> Result<u32, AfbError> {
     let data = input.trim_start_matches("0x");
     if data != input {
         match u32::from_str_radix(data, 16) {
-            Err(_error) => Err(AfbError::new("hexa-invalid-u32", input)),
+            Err(_error) => afb_error!("hexa-invalid-u32", input),
             Ok(value) => Ok(value),
         }
     } else {
         match u32::from_str_radix(data, 10) {
-            Err(_error) => Err(AfbError::new("hexa-invalid-integer", input)),
+            Err(_error) => afb_error!("hexa-invalid-integer", input),
             Ok(value) => Ok(value),
         }
     }
@@ -36,12 +36,12 @@ fn hexa_string_to_u16(input: String) -> Result<u16, AfbError> {
     let data = input.trim_start_matches("0x");
     if data != input {
         match u16::from_str_radix(data, 16) {
-            Err(_error) => Err(AfbError::new("hexa-invalid-u16", input)),
+            Err(_error) => afb_error!("hexa-invalid-u16", input),
             Ok(value) => Ok(value),
         }
     } else {
         match u16::from_str_radix(data, 10) {
-            Err(_error) => Err(AfbError::new("hexa-invalid-integer", input)),
+            Err(_error) => afb_error!("hexa-invalid-integer", input),
             Ok(value) => Ok(value),
         }
     }
@@ -51,12 +51,12 @@ fn hexa_string_to_u8(input: String) -> Result<u8, AfbError> {
     let data = input.trim_start_matches("0x");
     if data != input {
         match u8::from_str_radix(data, 16) {
-            Err(_error) => Err(AfbError::new("hexa-invalid-u8", input)),
+            Err(_error) => afb_error!("hexa-invalid-u8", input),
             Ok(value) => Ok(value),
         }
     } else {
         match u8::from_str_radix(data, 10) {
-            Err(_error) => Err(AfbError::new("hexa-invalid-integer", input)),
+            Err(_error) => afb_error!("hexa-invalid-integer", input),
             Ok(value) => Ok(value as u8),
         }
     }
@@ -78,10 +78,10 @@ pub(self) fn cmd_exec(
             i2c.write(dev_addr, cmd_reg, hexa_string_to_u16(cmd_value)?)?;
         }
         _ => {
-            return Err(AfbError::new(
+            return afb_error!(
                 "i2c-init-size",
-                format!("invalid size:{} should Byte(1) & World(2)", cmd_size),
-            ))
+                "invalid size:{} should Byte(1) & World(2)", cmd_size
+            )
         }
     }
     Ok(())
@@ -132,10 +132,10 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
                         rqt.reply(data as u32, 0);
                     }
                     _ => {
-                        return Err(AfbError::new(
+                        return afb_error!(
                             "rqt-i2c-size",
-                            format!("invalid size:{} should Byte(1) & World(2)", ctx.cmd_size),
-                        ))
+                           "invalid size:{} should Byte(1) & World(2)", ctx.cmd_size
+                        )
                     }
                 },
                 PresetValue::WRITE => {
@@ -152,10 +152,10 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
                             rqt.reply(AFB_NO_DATA, 0);
                         }
                         _ => {
-                            return Err(AfbError::new(
+                            return afb_error!(
                                 "rqt-i2c-size",
-                                format!("invalid size:{} should Byte(1) & World(2)", ctx.cmd_size),
-                            ))
+                                "invalid size:{} should Byte(1) & World(2)", ctx.cmd_size
+                            )
                         }
                     }
                 }
@@ -188,10 +188,10 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
                         rqt.reply(AFB_NO_DATA, 0);
                     }
                     _ => {
-                        return Err(AfbError::new(
+                        return afb_error!(
                             "rqt-i2c-size",
-                            format!("invalid size:{} should Byte(1) & World(2)", ctx.cmd_size),
-                        ))
+                            "invalid size:{} should Byte(1) & World(2)", ctx.cmd_size
+                        )
                     }
                 },
             }
@@ -260,30 +260,29 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
                     }
                 }
                 _ => {
-                    return Err(AfbError::new(
+                    return afb_error!(
                         "i2c-config-fail",
-                        format!(
-                            "device:{} optional 'init' label should be an array",
+                                                    "device:{} optional 'init' label should be an array",
                             dev_uid
-                        ),
-                    ))
+
+                    )
                 }
             }
         }
 
         let cmds = if let Ok(value) = device.get::<JsoncObj>("cmds") {
             if !matches!(value.get_type(), Jtype::Array) {
-                return Err(AfbError::new(
+                return afb_error!(
                     "i2c-config-fail",
-                    format!("device:{} 'cmds' should be an array", dev_uid),
-                ));
+                    "device:{} 'cmds' should be an array", dev_uid
+                )
             }
             value
         } else {
-            return Err(AfbError::new(
+            return afb_error!(
                 "i2c-config-fail",
-                format!("device:{} 'cmds' config missing", dev_uid),
-            ));
+                "device:{} 'cmds' config missing", dev_uid
+            )
         };
 
         for jdx in 0..cmds.count()? {

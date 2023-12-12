@@ -31,10 +31,10 @@ impl I2cHandle {
     pub fn new(i2cbus: &'static str) -> Result<I2cHandle, AfbError> {
         let devname = match CString::new(i2cbus) {
             Err(_) => {
-                return Err(AfbError::new(
+                return afb_error!(
                     "serial-invalid-devname",
                     "fail to convert name to UTF8",
-                ))
+                )
             }
             Ok(value) => value,
         };
@@ -53,7 +53,7 @@ impl I2cHandle {
         // open tty i2cbus
         let raw_fd = unsafe { cglue::open(self.devname.as_ptr(), cglue::BUS_I2C_O_RDWR, 0) };
         if raw_fd < 0 {
-            return Err(AfbError::new("serial-open-fail", get_perror()));
+            return afb_error!("serial-open-fail","dev:{:?} error:{}", self.devname, get_perror())
         }
 
         // apply i2c init commands if any (TBD Fulup)
@@ -89,17 +89,17 @@ impl I2cHandle {
         let fd = self.raw_fd.get();
 
         if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, addr) } < 0) {
-            return Err(AfbError::new(
+            return afb_error!(
                 "i2c-read-addr",
-                format!("invalid addr={}", addr),
-            ));
+                "invalid addr={}", addr
+            );
         }
 
         match I2cHandle::mk_read(fd, reg) {
-            Err(error) => Err(AfbError::new(
+            Err(error) => afb_error!(
                 "i2c-read-data",
-                format!("addr:{} register:{} error:{}", addr, reg, error),
-            )),
+                "addr:{} register:{} error:{}", addr, reg, error
+            ),
             Ok(value) => Ok(value),
         }
     }
@@ -111,17 +111,17 @@ impl I2cHandle {
         let fd = self.raw_fd.get();
 
         if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, addr) } < 0) {
-            return Err(AfbError::new(
+            return afb_error!(
                 "i2c-write-addr",
-                format!("invalid addr={}", addr),
-            ));
+                "invalid addr={}", addr
+            );
         }
 
         match I2cHandle::mk_write(fd, reg, data) {
-            Err(error) => Err(AfbError::new(
+            Err(error) => afb_error!(
                 "i2c-write-data",
-                format!("addr:{} register:{} error:{}", addr, reg, error),
-            )),
+                "addr:{} register:{} error:{}", addr, reg, error
+            ),
             Ok(value) => Ok(value),
         }
     }

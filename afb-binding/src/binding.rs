@@ -66,25 +66,25 @@ pub fn binding_init(rootv4: AfbApiV4, jconf: JsoncObj) -> Result<&'static AfbApi
     let i2cbus = if let Ok(value) = jconf.get::<String>("i2cbus") {
         to_static_str(value)
     } else {
-        return Err(AfbError::new(
+        return afb_error!(
             "i2c-config-fail",
             "mandatory label 'i2cbus' device missing",
-        ));
+        )
     };
 
     let devices = if let Ok(value) = jconf.get::<JsoncObj>("devices") {
         if !matches!(value.get_type(), Jtype::Array) {
-            return Err(AfbError::new(
+            return afb_error!(
                 "i2c-config-fail",
                 "mandatory 'devices' should be an array",
-            ));
+            )
         }
         value
     } else {
-        return Err(AfbError::new(
+        return afb_error!(
             "i2c-config-fail",
             "mandatory 'devices' config missing",
-        ));
+        );
     };
 
     let config = BindingCfg {

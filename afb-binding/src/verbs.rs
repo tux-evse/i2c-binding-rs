@@ -62,6 +62,31 @@ fn hexa_string_to_u8(input: String) -> Result<u8, AfbError> {
     }
 }
 
+pub(self) fn cmd_exec(
+    i2c: Rc<I2cHandle>,
+    dev_addr: u32,
+    cmd_size: u8,
+    cmd: JsoncObj,
+) -> Result<(), AfbError> {
+    let cmd_reg = hexa_string_to_u8(cmd.get::<String>("reg")?)?;
+    let cmd_value = cmd.get::<String>("value")?;
+    match cmd_size {
+        1 => {
+            i2c.write(dev_addr, cmd_reg, hexa_string_to_u8(cmd_value)?)?;
+        }
+        2 => {
+            i2c.write(dev_addr, cmd_reg, hexa_string_to_u16(cmd_value)?)?;
+        }
+        _ => {
+            return Err(AfbError::new(
+                "i2c-init-size",
+                format!("invalid size:{} should Byte(1) & World(2)", cmd_size),
+            ))
+        }
+    }
+    Ok(())
+}
+
 #[derive(Clone)]
 struct PresetData {
     delay: Option<Duration>,
@@ -84,9 +109,9 @@ struct PreSetAction {
 struct RqtI2ccCtx {
     i2c: Rc<I2cHandle>,
     actions: Vec<PreSetAction>,
-    register: u8,
-    addr: u32,
-    size: u8,
+    dev_addr: u32,
+    cmd_reg: u8,
+    cmd_size: u8,
 }
 
 AfbVerbRegister!(RqtI2ccVerb, rqt_i2c_cb, RqtI2ccCtx);
@@ -97,73 +122,78 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
     for preset in &ctx.actions {
         if action == preset.action {
             match &preset.value {
-                PresetValue::READ => match ctx.size {
+                PresetValue::READ => match ctx.cmd_size {
                     1 => {
-                        let data: u8 = ctx.i2c.read(ctx.addr, ctx.register)?;
+                        let data: u8 = ctx.i2c.read(ctx.dev_addr, ctx.cmd_reg)?;
                         rqt.reply(data as u32, 0);
                     }
                     2 => {
-                        let data: u16 = ctx.i2c.read(ctx.addr, ctx.register)?;
+                        let data: u16 = ctx.i2c.read(ctx.dev_addr, ctx.cmd_reg)?;
                         rqt.reply(data as u32, 0);
                     }
                     _ => {
                         return Err(AfbError::new(
                             "rqt-i2c-size",
-                            format!("invalid size:{} should Byte(1) & World(2)", ctx.size),
+                            format!("invalid size:{} should Byte(1) & World(2)", ctx.cmd_size),
                         ))
                     }
                 },
                 PresetValue::WRITE => {
                     let query = query.get::<String>("value")?;
-                    match ctx.size {
+                    match ctx.cmd_size {
                         1 => {
                             ctx.i2c
-                                .write(ctx.addr, ctx.register, hexa_string_to_u8(query)?)?;
+                                .write(ctx.dev_addr, ctx.cmd_reg, hexa_string_to_u8(query)?)?;
                             rqt.reply(AFB_NO_DATA, 0);
                         }
                         2 => {
                             ctx.i2c
-                                .write(ctx.addr, ctx.register, hexa_string_to_u16(query)?)?;
+                                .write(ctx.dev_addr, ctx.cmd_reg, hexa_string_to_u16(query)?)?;
                             rqt.reply(AFB_NO_DATA, 0);
                         }
                         _ => {
                             return Err(AfbError::new(
                                 "rqt-i2c-size",
-                                format!("invalid size:{} should Byte(1) & World(2)", ctx.size),
+                                format!("invalid size:{} should Byte(1) & World(2)", ctx.cmd_size),
                             ))
                         }
                     }
                 }
-                PresetValue::PRESET(data) => {
-                    match ctx.size {
-                        1 => {
-                            for idx in 0..data.values.len() {
-                                ctx.i2c
-                                    .write(ctx.addr, ctx.register, data.values[idx] as u8)?;
-                                if let Some(value) = data.delay {
+                // loop on preset value if needed wait except for last preset
+                PresetValue::PRESET(data) => match ctx.cmd_size {
+                    1 => {
+                        let count = data.values.len();
+                        for idx in 0..count {
+                            ctx.i2c
+                                .write(ctx.dev_addr, ctx.cmd_reg, data.values[idx] as u8)?;
+                            if let Some(value) = data.delay {
+                                if idx < count - 1 {
                                     thread::sleep(value)
                                 }
                             }
-                            rqt.reply(AFB_NO_DATA, 0);
                         }
-                        2 => {
-                            for idx in 0..data.values.len() {
-                                ctx.i2c
-                                    .write(ctx.addr, ctx.register, data.values[idx] as u16)?;
-                                if let Some(value) = data.delay {
-                                    thread::sleep(value)
-                                }
-                            }
-                            rqt.reply(AFB_NO_DATA, 0);
-                        }
-                        _ => {
-                            return Err(AfbError::new(
-                                "rqt-i2c-size",
-                                format!("invalid size:{} should Byte(1) & World(2)", ctx.size),
-                            ))
-                        }
+                        rqt.reply(AFB_NO_DATA, 0);
                     }
-                }
+                    2 => {
+                        let count = data.values.len();
+                        for idx in 0..count {
+                            ctx.i2c
+                                .write(ctx.dev_addr, ctx.cmd_reg, data.values[idx] as u16)?;
+                            if let Some(value) = data.delay {
+                                if idx < count - 1 {
+                                    thread::sleep(value)
+                                }
+                            }
+                        }
+                        rqt.reply(AFB_NO_DATA, 0);
+                    }
+                    _ => {
+                        return Err(AfbError::new(
+                            "rqt-i2c-size",
+                            format!("invalid size:{} should Byte(1) & World(2)", ctx.cmd_size),
+                        ))
+                    }
+                },
             }
         }
     }
@@ -171,37 +201,6 @@ fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<
 }
 
 pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(), AfbError> {
-    // open i2c bus and send init commands if needed
-    let i2c = Rc::new(I2cHandle::new(config.i2cbus)?);
-    if let Some(inits) = config.inits {
-        for idx in 0..inits.count()? {
-            let cmd = inits.index::<JsoncObj>(idx)?;
-            let addr = hexa_string_to_u32(cmd.get::<String>("addr")?)?;
-            let register = hexa_string_to_u8(cmd.get::<String>("reg")?)?;
-            let value = cmd.get::<String>("value")?;
-            let size = if let Ok(value) = cmd.get::<u32>("size") {
-                value
-            } else {
-                1
-            };
-
-            match size {
-                1 => {
-                    i2c.write(addr, register, hexa_string_to_u8(value)?)?;
-                }
-                2 => {
-                    i2c.write(addr, register, hexa_string_to_u16(value)?)?;
-                }
-                _ => {
-                    return Err(AfbError::new(
-                        "i2c-init-size",
-                        format!("invalid size:{} should Byte(1) & World(2)", size),
-                    ))
-                }
-            }
-        }
-    }
-
     // default actions
     let get = PreSetAction {
         action: "set".to_string(),
@@ -212,106 +211,163 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
         value: PresetValue::READ,
     };
 
+    // open i2c bus and send init commands if needed
+    let i2c = Rc::new(I2cHandle::new(config.i2cbus)?);
+
     // loop on command and create corresponding verbs
-    for idx in 0..config.cmds.count()? {
-        let cmd = config.cmds.index::<JsoncObj>(idx)?;
+    for idx in 0..config.devices.count()? {
+        let device = config.devices.index::<JsoncObj>(idx)?;
 
-        // mandatory fields
-        let uid = cmd.get::<String>("uid")?;
-        let addr = hexa_string_to_u32(cmd.get::<String>("addr")?)?;
-        let register = hexa_string_to_u8(cmd.get::<String>("register")?)?;
+        let dev_uid = to_static_str(device.get::<String>("uid")?);
+        let group = AfbGroup::new(dev_uid);
 
-        let name = if let Ok(value) = cmd.get::<String>("name") {
-            Some(value)
-        } else {
-            None
+        let group = match device.get::<String>("info") {
+            Ok(value) => group.set_info(to_static_str(value)),
+            Err(_) => group,
         };
 
-        let info = if let Ok(value) = cmd.get::<String>("info") {
-            Some(value)
-        } else {
-            None
+        let group = match device.get::<String>("prefix") {
+            Ok(value) => group.set_prefix(to_static_str(value)),
+            Err(_) => group,
         };
 
-        let permission = if let Ok(value) = cmd.get::<String>("info") {
-            Some(value)
-        } else {
-            None
+        let group = match device.get::<String>("permission") {
+            Ok(value) => group.set_permission(AfbPermission::new(to_static_str(value))),
+            Err(_) => group,
         };
 
-        let size = if let Ok(value) = cmd.get::<u32>("size") {
+        // mandatory I2C device fields
+        let dev_addr = hexa_string_to_u32(device.get::<String>("addr")?)?;
+        let dev_size = if let Ok(value) = device.get::<u32>("size") {
             value as u8
         } else {
             1
         };
 
-        let verb = AfbVerb::new(to_static_str(uid));
-
-        // provision default actions and then config presets
-        let mut actions = Vec::from([set.clone(), get.clone()]);
-        let mut actions_info = "['get',".to_string();
-        if let Ok(presets) = cmd.get::<JsoncObj>("presets") {
-            for jdx in 0..presets.count()? {
-                let preset = presets.index::<JsoncObj>(jdx)?;
-                let action = preset.get::<String>("action")?.to_lowercase();
-                let delay = if let Ok(value) = preset.get::<u64>("delay") {
-                    Some(time::Duration::from_millis(value))
-                } else {
-                    None
-                };
-                let mut data = PresetData {
-                    delay: delay,
-                    values: Vec::new(),
-                };
-                let values = preset.get::<JsoncObj>("values")?;
-                for kdx in 0..values.count()? {
-                    let value = hexa_string_to_u16(values.index::<String>(kdx)?)?;
-                    data.values.push(value);
-                }
-                actions_info.push_str(format!("'{}',", &action).as_str());
-                actions.push(PreSetAction {
-                    action: action,
-                    value: PresetValue::PRESET(data),
-                });
-            }
+        let dev_delay = if let Ok(value) = device.get::<u64>("delay") {
+            Some(time::Duration::from_millis(value))
         } else {
-            actions_info.push_str("'set'");
-            verb.set_usage("{'action':'set|get', 'value':'0x??'");
-            if let Ok(samples) = cmd.get::<JsoncObj>("samples") {
-                for kdx in 0..samples.count()? {
-                    let sample = samples.index::<String>(kdx)?;
-                    verb.set_sample(to_static_str(format!(
-                        "{{'action':'set','value':'{}'}}",
-                        sample
-                    )))?;
+            None
+        };
+
+        // check device need to be initialized
+        if let Ok(inits) = device.get::<JsoncObj>("init") {
+            match inits.get_type() {
+                Jtype::Array => {
+                    for kdx in 0..inits.count()? {
+                        let init = inits.index::<JsoncObj>(kdx)?;
+                        cmd_exec(i2c.clone(), dev_addr, dev_size, init.clone())?;
+                    }
+                }
+                _ => {
+                    return Err(AfbError::new(
+                        "i2c-config-fail",
+                        format!(
+                            "device:{} optional 'init' label should be an array",
+                            dev_uid
+                        ),
+                    ))
                 }
             }
+        }
+
+        let cmds = if let Ok(value) = device.get::<JsoncObj>("cmds") {
+            if !matches!(value.get_type(), Jtype::Array) {
+                return Err(AfbError::new(
+                    "i2c-config-fail",
+                    format!("device:{} 'cmds' should be an array", dev_uid),
+                ));
+            }
+            value
+        } else {
+            return Err(AfbError::new(
+                "i2c-config-fail",
+                format!("device:{} 'cmds' config missing", dev_uid),
+            ));
         };
-        actions_info.push_str("]"); // close action info json_string array
-        verb.set_action(to_static_str(actions_info))?;
 
-        verb.set_callback(Box::new(RqtI2ccVerb {
-            i2c: i2c.clone(),
-            addr,
-            register,
-            actions,
-            size: size,
-        }));
+        for jdx in 0..cmds.count()? {
+            let cmd = cmds.index::<JsoncObj>(jdx)?;
 
-        if let Some(value) = name {
-            verb.set_name(to_static_str(value));
+            let cmd_uid = to_static_str(cmd.get::<String>("uid")?);
+            let verb = AfbVerb::new(cmd_uid);
+
+            let cmd_reg = hexa_string_to_u8(cmd.get::<String>("register")?)?;
+
+            if let Ok(value) = cmd.get::<String>("info") {
+                verb.set_info(to_static_str(value));
+            };
+
+            let cmd_size = if let Ok(value) = cmd.get::<u32>("size") {
+                value as u8
+            } else {
+                dev_size
+            };
+
+            let cmd_delay = if let Ok(value) = cmd.get::<u64>("delay") {
+                Some(time::Duration::from_millis(value))
+            } else {
+                dev_delay
+            };
+
+            if let Ok(value) = cmd.get::<String>("permission") {
+                verb.set_permission(AfbPermission::new(to_static_str(value)));
+            };
+
+            // provision default actions and then config presets
+            let mut actions = Vec::from([set.clone(), get.clone()]);
+            let mut actions_info = "['get',".to_string();
+            if let Ok(presets) = cmd.get::<JsoncObj>("presets") {
+                for jdx in 0..presets.count()? {
+                    let preset = presets.index::<JsoncObj>(jdx)?;
+                    let action = preset.get::<String>("action")?.to_lowercase();
+                    let mut data = PresetData {
+                        delay: cmd_delay,
+                        values: Vec::new(),
+                    };
+                    let values = preset.get::<JsoncObj>("values")?;
+                    for kdx in 0..values.count()? {
+                        let value = hexa_string_to_u16(values.index::<String>(kdx)?)?;
+                        data.values.push(value);
+                    }
+                    actions_info.push_str(format!("'{}',", &action).as_str());
+                    actions.push(PreSetAction {
+                        action: action,
+                        value: PresetValue::PRESET(data),
+                    });
+                }
+            } else {
+                actions_info.push_str("'set'");
+                verb.set_usage("{'action':'set|get', 'value':'0x??'");
+                if let Ok(samples) = cmd.get::<JsoncObj>("samples") {
+                    for kdx in 0..samples.count()? {
+                        let sample = samples.index::<String>(kdx)?;
+                        verb.set_sample(to_static_str(format!(
+                            "{{'action':'set','value':'{}'}}",
+                            sample
+                        )))?;
+                    }
+                }
+            };
+            actions_info.push_str("]"); // close action info json_string array
+            verb.set_action(to_static_str(actions_info))?;
+
+            verb.set_callback(Box::new(RqtI2ccVerb {
+                i2c: i2c.clone(),
+                actions,
+                dev_addr,
+                cmd_reg,
+                cmd_size: cmd_size,
+            }));
+
+            // add command to current group
+            let group = unsafe { &mut *(group as *mut AfbGroup) };
+            group.add_verb(verb.finalize()?);
         }
 
-        if let Some(value) = info {
-            verb.set_info(to_static_str(value));
-        }
-
-        if let Some(value) = permission {
-            verb.set_permission(AfbPermission::new(to_static_str(value)));
-        }
-
-        api.add_verb(verb.finalize()?);
+        // add command group to api
+        let group = unsafe { &mut *(group as *mut AfbGroup) };
+        api.add_group(group.finalize()?);
     }
-
     Ok(())
 }

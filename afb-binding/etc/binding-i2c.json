@@ -10,51 +10,61 @@
         {
             "uid": "i2c-bus",
             "api": "i2c",
-            "path": "/usr/redpesk/i2c-binding-rs/lib/libafb_i2c.so",
-            //"path": "/home/fulup/.cargo/build/debug/libafb_i2c.so",
+            "path": "/home/fulup/.cargo/build/debug/libafb_i2c.so",
             "info": "i2c set/get api",
             "i2cbus": "/dev/i2c-0",
-            //"i2cbus": "/dev/ttyUSB0",
-            "permission": "acl:ic2:0",
-            "init": [
+            "permission": "acl:i2c:0",
+            "devices": [
                 {
+                    "uid": "gpio-multiplexer",
+                    "prefix": "gpio",
+                    "info": "interface to power GPIO multiplexer",
                     "addr": "0x20",
-                    "reg": "0x02",
-                    "value": "0xDC"
-                },
-                {
-                    "addr": "0x20",
-                    "reg": "0x06",
-                    "value": "0x03"
-                }
-            ],
-            "cmds": [
-                {
-                    "uid": "lock-motor",
-                    "name": "Lock-Motor",
-                    "info": "Lock motor I2C register",
-                    "permission": "acl:lock:motor",
-                    "size": 1,
-                    "addr": "0x20",
-                    "register": "0x02",
-                    "presets": [
+                    "size":1,
+                    "init": [
                         {
-                            "action": "on",
-                            "delay": 350,
-                            "values": [
-                                "0xDC",
-                                "0xFC",
-                                "0xDC"
+                            "reg": "0x02",
+                            "value": "0xDC"
+                        },
+                        {
+                            "reg": "0x06",
+                            "value": "0x83"
+                        }
+                    ],
+                    "cmds": [
+                        {
+                            "uid": "lock-motor",
+                            "name": "lock",
+                            "info": "Lock motor register",
+                            "permission": "acl:ic2:lock-motor",
+                            "delay": 300,
+                            "register": "0x02",
+                            "presets": [
+                                {
+                                    "action": "on",
+                                    "values": [
+                                        "0x04",
+                                        "0x24",
+                                        "0x04"
+                                    ]
+                                },
+                                {
+                                    "action": "off",
+                                    "values": [
+                                        "0x04",
+                                        "0x14",
+                                        "0x04"
+                                    ]
+                                }
                             ]
                         },
                         {
-                            "action": "off",
-                            "delay": 500,
-                            "values": [
-                                "0xCC",
-                                "0xEC",
-                                "0xCC"
-                            ]
+                            "uid": "lock-status",
+                            "name": "status",
+                            "info": "Lock status register",
+                            "size": 1,
+                            "register": "0x00",
+                            "presets": []
                         }
                     ]
                 }

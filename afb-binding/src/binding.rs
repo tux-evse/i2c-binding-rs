@@ -19,8 +19,7 @@ pub(crate) fn to_static_str(value: String) -> &'static str {
 
 pub(crate) struct BindingCfg {
     pub i2cbus: &'static str,
-    pub cmds: JsoncObj,
-    pub inits: Option<JsoncObj>,
+    pub devices: JsoncObj,
 }
 
 impl AfbApiControls for BindingCfg {
@@ -73,36 +72,25 @@ pub fn binding_init(rootv4: AfbApiV4, jconf: JsoncObj) -> Result<&'static AfbApi
         ));
     };
 
-
-    let inits = if let Ok(value) = jconf.get::<JsoncObj>("init") {
-        if ! matches!(value.get_type(), Jtype::Array) {
+    let devices = if let Ok(value) = jconf.get::<JsoncObj>("devices") {
+        if !matches!(value.get_type(), Jtype::Array) {
             return Err(AfbError::new(
-                "nfc-config-fail",
-                "optional 'init' label should be an array",
-            ));
-        }
-        Some(value)
-    } else {
-        None
-    };
-
-    let cmds = if let Ok(value) = jconf.get::<JsoncObj>("cmds") {
-
-        if ! matches!(value.get_type(), Jtype::Array) {
-            return Err(AfbError::new(
-                "nfc-config-fail",
-                "mandatory 'cmds' should be an array",
+                "i2c-config-fail",
+                "mandatory 'devices' should be an array",
             ));
         }
         value
     } else {
         return Err(AfbError::new(
-            "nfc-config-fail",
-            "mandatory 'cmds' config missing",
+            "i2c-config-fail",
+            "mandatory 'devices' config missing",
         ));
     };
 
-    let config = BindingCfg { i2cbus, cmds, inits };
+    let config = BindingCfg {
+        i2cbus,
+        devices,
+    };
 
     // create backend API
     let api = AfbApi::new(api).set_info(info).set_permission(permission);

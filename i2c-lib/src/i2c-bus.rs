@@ -90,14 +90,14 @@ impl I2cHandle {
 
         if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, addr) } < 0) {
             return Err(AfbError::new(
-                "ic2-read-addr",
+                "i2c-read-addr",
                 format!("invalid addr={}", addr),
             ));
         }
 
         match I2cHandle::mk_read(fd, reg) {
             Err(error) => Err(AfbError::new(
-                "ic2-read-data",
+                "i2c-read-data",
                 format!("addr:{} register:{} error:{}", addr, reg, error),
             )),
             Ok(value) => Ok(value),
@@ -112,14 +112,14 @@ impl I2cHandle {
 
         if (unsafe { cglue::ioctl(fd, cglue::BUS_I2C_SLAVE, addr) } < 0) {
             return Err(AfbError::new(
-                "ic2-write-addr",
+                "i2c-write-addr",
                 format!("invalid addr={}", addr),
             ));
         }
 
         match I2cHandle::mk_write(fd, reg, data) {
             Err(error) => Err(AfbError::new(
-                "ic2-write-data",
+                "i2c-write-data",
                 format!("addr:{} register:{} error:{}", addr, reg, error),
             )),
             Ok(value) => Ok(value),

@@ -21,4 +21,4 @@ if ! test -f ./lib/libafb_i2c.so; then
 fi
 
 # start binder with test config
-afb-binder -vvv --config=./etc/binding-i2c.json
+afb-binder -v --config=./etc/binding-i2c.json

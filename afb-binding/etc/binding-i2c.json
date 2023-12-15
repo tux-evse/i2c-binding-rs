@@ -24,7 +24,7 @@
                     "init": [
                         {
                             "reg": "0x02",
-                            "value": "0xDC"
+                            "value": "0x04"
                         },
                         {
                             "reg": "0x06",

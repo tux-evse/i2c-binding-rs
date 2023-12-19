@@ -65,6 +65,14 @@
                             "size": 1,
                             "register": "0x00",
                             "presets": []
+                        },
+                        {
+                            "uid": "relay-status",
+                            "name": "relay",
+                            "info": "Relay status register",
+                            "size": 2,
+                            "register": "0x01",
+                            "presets": []
                         }
                     ]
                 }

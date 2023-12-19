@@ -144,7 +144,7 @@ impl I2cDataCmd<u8> for I2cHandle {
 
     fn mk_write(fd: i32, register: u8, data: u8) -> Result<(), String> {
         let res = unsafe { cglue::i2c_smbus_write_byte_data(fd, register, data) };
-        println!("i2c_smbus_write_byte_data register:{:#02x} set:{:#02x} get:{:#02x}", register, data, res);
+        println!("i2c_smbus_write_byte_data register:{:#02x} set:{:#02x} status:{}", register, data, res);
         if res < 0 {
             return Err(get_perror());
         }
@@ -164,7 +164,7 @@ impl I2cDataCmd<u16> for I2cHandle {
 
     fn mk_write(fd: i32, register: u8, data: u16) -> Result<(), String> {
         let res = unsafe { cglue::i2c_smbus_write_word_data(fd, register, data) };
-        println!("i2c_smbus_write_byte_data register:{:#02x} set:{:#02x} get:{:#02x}", register, data, res);
+        println!("i2c_smbus_write_byte_data register:{:#02x} set:{:#02x} status:{}", register, data, res);
         if res < 0 {
             return Err(get_perror());
         }

@@ -13,10 +13,6 @@
 use crate::prelude::*;
 use afbv4::prelude::*;
 
-pub(crate) fn to_static_str(value: String) -> &'static str {
-    Box::leak(value.into_boxed_str())
-}
-
 pub(crate) struct BindingCfg {
     pub i2cbus: &'static str,
     pub devices: JsoncObj,

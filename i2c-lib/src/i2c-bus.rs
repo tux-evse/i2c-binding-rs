@@ -55,7 +55,7 @@ impl I2cHandle {
         // open tty i2cbus
         let raw_fd = unsafe { cglue::open(self.devname.as_ptr(), cglue::BUS_I2C_O_RDWR, 0) };
         if raw_fd < 0 {
-            return afb_error!("serial-open-fail","dev:{:?} error:{}", self.devname, get_perror())
+            return afb_error!("serial-open-fail","dev:{:?}  error:{} ", self.devname, get_p_error() )
         }
 
         // apply i2c init commands if any (TBD Fulup)
@@ -137,7 +137,7 @@ impl I2cDataCmd<u8> for I2cHandle {
         let res = unsafe { cglue::i2c_smbus_read_byte_data(fd, register) };
         println!("i2c_smbus_read_byte_data register:{:#02x} data:{:#02x}", register, res);
         if res < 0 {
-            return Err(get_perror());
+            return Err(get_p_error());
         }
         Ok((res & 0xFF) as u8)
     }
@@ -146,7 +146,7 @@ impl I2cDataCmd<u8> for I2cHandle {
         let res = unsafe { cglue::i2c_smbus_write_byte_data(fd, register, data) };
         println!("i2c_smbus_write_byte_data register:{:#02x} set:{:#02x} status:{}", register, data, res);
         if res < 0 {
-            return Err(get_perror());
+            return Err(get_p_error());
         }
         Ok(())
     }
@@ -157,7 +157,7 @@ impl I2cDataCmd<u16> for I2cHandle {
         let res = unsafe { cglue::i2c_smbus_read_word_data(fd, register) };
         println!("i2c_smbus_read_byte_data register:{:#02x} data:{:#04x}", register, res);
         if res < 0 {
-            return Err(get_perror());
+            return Err(get_p_error());
         }
         Ok((res & 0xFFFF) as u16)
     }
@@ -166,7 +166,7 @@ impl I2cDataCmd<u16> for I2cHandle {
         let res = unsafe { cglue::i2c_smbus_write_word_data(fd, register, data) };
         println!("i2c_smbus_write_byte_data register:{:#02x} set:{:#02x} status:{}", register, data, res);
         if res < 0 {
-            return Err(get_perror());
+            return Err(get_p_error());
         }
         Ok(())
     }

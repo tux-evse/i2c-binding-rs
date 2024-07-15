@@ -114,8 +114,10 @@ struct RqtI2ccCtx {
     cmd_size: u8,
 }
 
-AfbVerbRegister!(RqtI2ccVerb, rqt_i2c_cb, RqtI2ccCtx);
-fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbData, ctx: &mut RqtI2ccCtx) -> Result<(), AfbError> {
+fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbRqtData, ctx: &AfbCtxData) -> Result<(), AfbError> {
+    
+    let ctx = ctx.get_ref::<RqtI2ccCtx>()?;
+    
     let query = args.get::<JsoncObj>(0)?;
     let action = query.get::<String>("action")?.to_lowercase();
 
@@ -341,7 +343,7 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
                 if let Ok(samples) = cmd.get::<JsoncObj>("samples") {
                     for kdx in 0..samples.count()? {
                         let sample = samples.index::<String>(kdx)?;
-                        verb.set_sample(to_static_str(format!(
+                        verb.add_sample(to_static_str(format!(
                             "{{'action':'set','value':'{}'}}",
                             sample
                         )))?;
@@ -349,15 +351,16 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
                 }
             };
             actions_info.push_str("]"); // close action info json_string array
-            verb.set_action(to_static_str(actions_info))?;
+            verb.set_actions(to_static_str(actions_info))?;
 
-            verb.set_callback(Box::new(RqtI2ccVerb {
+            verb.set_callback(rqt_i2c_cb);
+            verb.set_context(RqtI2ccCtx {
                 i2c: i2c.clone(),
                 actions,
                 dev_addr,
                 cmd_reg,
                 cmd_size: cmd_size,
-            }));
+            });
 
             // add command to current group
             let group = unsafe { &mut *(group as *mut AfbGroup) };

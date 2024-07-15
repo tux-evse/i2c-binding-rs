@@ -27,7 +27,7 @@ pub mod cglue {
     include!("_capi-map.rs");
 }
 
-pub fn get_perror() -> String {
+pub fn get_p_error() -> String {
     let mut buffer = [0 as raw::c_char; MAX_ERROR_LEN];
     unsafe {
         cglue::strerror_r(

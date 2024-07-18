@@ -114,9 +114,17 @@ struct RqtI2ccCtx {
     cmd_size: u8,
 }
 
+struct RqtI2ccDataCtx {
+    i2c: Rc<I2cHandle>,
+    actions: Vec<PreSetAction>,
+    dev_addr: u32,
+    cmd_reg: u8,
+    cmd_size: u8,
+}
+
 fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbRqtData, ctx: &AfbCtxData) -> Result<(), AfbError> {
     
-    let ctx = ctx.get_ref::<RqtI2ccCtx>()?;
+    let ctx = ctx.get_ref::<RqtI2ccDataCtx>()?;
     
     let query = args.get::<JsoncObj>(0)?;
     let action = query.get::<String>("action")?.to_lowercase();

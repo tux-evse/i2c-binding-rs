@@ -123,9 +123,8 @@ struct RqtI2ccDataCtx {
 }
 
 fn rqt_i2c_cb(rqt: &AfbRequest, args: &AfbRqtData, ctx: &AfbCtxData) -> Result<(), AfbError> {
-    
+
     let ctx = ctx.get_ref::<RqtI2ccDataCtx>()?;
-    
     let query = args.get::<JsoncObj>(0)?;
     let action = query.get::<String>("action")?.to_lowercase();
 
@@ -362,7 +361,7 @@ pub(crate) fn register_verbs(api: &mut AfbApi, config: BindingCfg) -> Result<(),
             verb.set_actions(to_static_str(actions_info))?;
 
             verb.set_callback(rqt_i2c_cb);
-            verb.set_context(RqtI2ccCtx {
+            verb.set_context(RqtI2ccDataCtx {
                 i2c: i2c.clone(),
                 actions,
                 dev_addr,

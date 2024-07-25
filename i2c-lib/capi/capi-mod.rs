@@ -26,17 +26,3 @@ pub mod cglue {
     #![allow(non_snake_case)]
     include!("_capi-map.rs");
 }
-
-pub fn get_perror() -> String {
-    let mut buffer = [0 as raw::c_char; MAX_ERROR_LEN];
-    unsafe {
-        cglue::strerror_r(
-            *cglue::__errno_location(),
-            &mut buffer as *mut raw::c_char,
-            MAX_ERROR_LEN,
-        )
-    };
-    let cstring = unsafe { CStr::from_ptr(&mut buffer as *const raw::c_char) };
-    let slice: &str = cstring.to_str().unwrap();
-    slice.to_owned()
-}
